@@ -1,6 +1,7 @@
 package com.br.sgme.service;
 
 import com.br.sgme.controller.cliente.dto.ClienteDto;
+import com.br.sgme.exceptions.ErrorDetails;
 import com.br.sgme.exceptions.RecursoNaoEncontradoException;
 import com.br.sgme.model.Cliente;
 import com.br.sgme.model.usuario.Usuario;
@@ -8,6 +9,7 @@ import com.br.sgme.model.usuario.UsuarioRole;
 import com.br.sgme.ports.ClienteUseCase;
 import com.br.sgme.repository.ClienteRepository;
 import com.br.sgme.repository.UsuarioRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,30 +66,44 @@ class ClienteUseCaseImplTest {
 
 
     @Test
-    @DisplayName("Deve Verificar o Cpf enviado")
-    void deveVerificarUmCpf() {
+    @DisplayName("Deve lancar erro ao tentar salvar com cpf ja existente")
+    void erroAoSalvarComCpfDuplicado() {
 
-        ClienteDto clienteDto = getClienteDto();
+        Usuario usuario = getUsuario();
+        ClienteDto clienteDto = new ClienteDto("1L",
+                "1L",
+                "04625588899",
+                "Helena Lima",
+                "21999999988" ,
+                LocalDate.now());
 
-        Optional<Usuario> usuario = Optional.of(getUsuario());
+        Cliente clienteExistente = new Cliente(
+                "1L", usuario,
+                "04625588899",
+                "Alice Lima",
+                "21999999999" ,
+                LocalDate.now());
 
-        Mockito.when(clienteRepository.findByCpfAndUsuarioId(Mockito.anyString(), Mockito.anyString()))
-                .thenReturn(Optional.of(new Cliente()));
+        Mockito.when(usuarioRepository.findById(Mockito.eq("1L"))).thenReturn(Optional.of(usuario));
 
-        Mockito.when(usuarioRepository.findById(Mockito.any()))
-                .thenReturn(usuario);
+        Mockito.when(clienteRepository.findByCpfAndUsuarioId(Mockito.eq("04625588899"), Mockito.eq("1L")))
+                .thenReturn(Optional.of(clienteExistente));
 
+     ResponseEntity<?> response = clienteUseCase.save(clienteDto);
 
-        ResponseEntity<?> err = clienteUseCase.save(clienteDto);
-        Mockito.verify(clienteRepository, Mockito.times(0)).save(Mockito.any(Cliente.class));
+     Mockito.verify(clienteRepository,
+             Mockito.times(1)).findByCpfAndUsuarioId("04625588899", "1L");
 
-        assertEquals(HttpStatus.FOUND, err.getStatusCode());
+     assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+     assertEquals("Cpf já cadastrado", ((ErrorDetails) Objects.requireNonNull(response.getBody())).getMessage());
     }
 
 
+
+
     @Test
-    @DisplayName("Deve alterar os dados do cliente")
-    void deveAlterarCliente() {
+    @DisplayName("Deve alterar os dados do cliente com sucesso")
+    void alterarClienteComSucesso() {
 
         Usuario usuario = getUsuario();
         Cliente clienteReceuperado = new Cliente("1L", usuario, "99999999988", "Helena Lima", "88888888888", LocalDate.now());
@@ -114,25 +132,44 @@ class ClienteUseCaseImplTest {
         assertEquals(HttpStatus.ACCEPTED, update.getStatusCode());
     }
 
+
+
     @Test
-    @DisplayName("Deve Verificar o Cpf enviado ao realizar o update dos dados")
-    void deveVerificarUmCpfAoAtualizar() {
+    @DisplayName("Deve  lancar error ao realizar o update dos dados com CPF duplicado")
+    void errorAoAtualizarComCpfDuplicado() {
 
         Usuario usuario = getUsuario();
         Cliente clienteReceuperado = new Cliente("1L", usuario, "06452285655", "Alice Lima", "88888888888", LocalDate.now());
+
         Cliente clienteExistente = new Cliente("2L", usuario, "02365544455", "Helena Lima", "88888888888", LocalDate.now());
 
         ClienteDto clienteDto = new ClienteDto("1L", "1L", "02365544455", "Helena Lima", "88888888888", LocalDate.now());
 
         Mockito.when(clienteRepository.findById("1L")).thenReturn(Optional.of(clienteReceuperado));
 
-        Mockito.when(clienteRepository.findByCpfAndUsuarioId("02365544455", "1L")).thenReturn(Optional.of(clienteExistente));
+        Mockito.when(clienteRepository.findByCpfAndUsuarioId("02365544455", "1L"))
+                .thenReturn(Optional.of(clienteExistente));
 
-        ResponseEntity<?> err = clienteUseCase.update("1L", clienteDto);
+        ResponseEntity<?> response = clienteUseCase.update("1L",  clienteDto);
 
-        Mockito.verify(clienteRepository, Mockito.times(0)).save(Mockito.any(Cliente.class));
+        Mockito.verify(clienteRepository, Mockito.times(1)).findByCpfAndUsuarioId("02365544455","1L");
 
-        assertEquals(HttpStatus.FOUND, err.getStatusCode());
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        assertEquals("Cpf já cadastrado", ((ErrorDetails) Objects.requireNonNull(response.getBody())).getMessage());
+
+    }
+
+    @Test
+    @DisplayName("Deve lancar um erro ao realizar o update dos dados de um cliente nao existente")
+    void deveLancarErroAoAtualizar() {
+
+        ClienteDto clienteDto = getClienteDto();
+
+       Mockito.when(clienteRepository.findById(Mockito.eq("1L"))).thenReturn(Optional.empty());
+
+       RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class,
+               ()->clienteUseCase.update("1L", clienteDto)
+               );
     }
 
     @Test
@@ -180,7 +217,7 @@ class ClienteUseCaseImplTest {
     @DisplayName("Deve Lancar Erro ao buscar um cliente pelo ID Inexistente")
     void deveLancarErroBuscandoClienteInexistente() {
 
-        Mockito.when(clienteRepository.findById(Mockito.any())).thenThrow(new RecursoNaoEncontradoException("Cliente não encontrado"));
+        Mockito.when(clienteRepository.findById(Mockito.any())).thenReturn(Optional.empty());
 
         RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class, () -> {
             clienteUseCase.getId(Mockito.any());

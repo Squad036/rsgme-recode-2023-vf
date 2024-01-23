@@ -99,6 +99,28 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.11</version>
+                <configuration>
+                    <excludes>**/enums/**</excludes>
+                    <excludes>**/infra/security/**</excludes>
+                    <excludes>**/exceptions/**</excludes>
+                    <excludes>**/model/usuario/**</excludes>
+                    <excludes>**/model/**</excludes>
+                    <excludes>**/controller/**</excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

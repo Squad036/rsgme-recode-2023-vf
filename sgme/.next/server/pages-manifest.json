@@ -2,5 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js"
+  "/gestao-sgme/fornecedores": "pages/gestao-sgme/fornecedores.js",
+  "/gestao-sgme/fornecedores/update/[codigo]": "pages/gestao-sgme/fornecedores/update/[codigo].js",
+  "/gestao-sgme": "pages/gestao-sgme.js"
 }

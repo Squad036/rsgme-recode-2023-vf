@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,8 +30,15 @@ public class ClienteUseCaseImpl implements ClienteUseCase {
 
         Usuario usuario = usuarioRepository.findById(clienteDto.getIdUsuario()).get();
 
-        ResponseEntity<ErrorDetails> cpfIsPresent = verificaCpf(clienteDto);
-        if (cpfIsPresent != null) return cpfIsPresent;
+        Optional<Cliente> clienteVerificado =
+                clienteRepository.findByCpfAndUsuarioId(clienteDto.getCpf(), clienteDto.getIdUsuario());
+
+        if (clienteVerificado.isPresent()) return new ResponseEntity<ErrorDetails>(ErrorDetails.builder()
+                .codigo(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .time(LocalDateTime.now())
+                .message("Cpf já cadastrado")
+                .build(), HttpStatus.UNPROCESSABLE_ENTITY);
+
 
         Cliente cliente = Cliente.builder()
                 .usuario(usuario)
@@ -51,9 +59,13 @@ public class ClienteUseCaseImpl implements ClienteUseCase {
         Cliente clienteSlecionado = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente nao encontrado"));
 
-        ResponseEntity<ErrorDetails> cpfIsPresent = verificaCpf(clienteDto);
-        if (cpfIsPresent != null && !Objects.equals(clienteDto.getCpf(), clienteSlecionado.getCpf()))
-            return cpfIsPresent;
+        Optional<Cliente> clienteVerificado = clienteRepository.findByCpfAndUsuarioId(clienteDto.getCpf(), clienteDto.getIdUsuario());
+
+        if (clienteVerificado.isPresent() && !Objects.equals(clienteDto.getCpf(), clienteSlecionado.getCpf())) return new ResponseEntity<ErrorDetails>(ErrorDetails.builder()
+                .codigo(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .time(LocalDateTime.now())
+                .message("Cpf já cadastrado")
+                .build(), HttpStatus.UNPROCESSABLE_ENTITY);
 
         Cliente cliente = Cliente.builder()
                 .id(clienteSlecionado.getId())
@@ -99,14 +111,6 @@ public class ClienteUseCaseImpl implements ClienteUseCase {
     public void delete(String id) {
         if (clienteRepository.findById(id).isEmpty()) throw new RecursoNaoEncontradoException("Cliente não encontrado");
         clienteRepository.deleteById(id);
-    }
-
-    private ResponseEntity<ErrorDetails> verificaCpf(ClienteDto data) {
-        if (clienteRepository.findByCpfAndUsuarioId(data.getCpf(), data.getIdUsuario()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .body(new ErrorDetails("Cpf cadastrado", LocalDateTime.now(), HttpStatus.UNPROCESSABLE_ENTITY.value()));
-        }
-        return null;
     }
 
 }

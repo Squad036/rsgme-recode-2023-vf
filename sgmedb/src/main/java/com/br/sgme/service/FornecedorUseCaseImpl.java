@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,8 +30,16 @@ public class FornecedorUseCaseImpl implements FornecedorUseCase {
     public ResponseEntity<?> save(FornecedorDto fornecedorDto) {
         Usuario usuario = usuarioRepository.findById(fornecedorDto.getIdUsuario()).get();
 
-        ResponseEntity<ErrorDetails> cnpfIsPresent = verificaCnpj(fornecedorDto);
-        if (cnpfIsPresent != null) return cnpfIsPresent;
+
+        Optional<Fornecedor> fornecedorVerificado =
+                fornecedorRepository.findByCnpjAndUsuarioId(fornecedorDto.getCnpj(), fornecedorDto.getIdUsuario());
+
+        if (fornecedorVerificado.isPresent()) return new ResponseEntity<ErrorDetails>(ErrorDetails.builder()
+                .codigo(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .time(LocalDateTime.now())
+                .message("CNPJ ou CPF já cadastrado")
+                .build(),
+                HttpStatus.UNPROCESSABLE_ENTITY);
 
         fornecedorRepository.save(Fornecedor.builder()
                 .usuario(usuario)
@@ -45,25 +54,31 @@ public class FornecedorUseCaseImpl implements FornecedorUseCase {
     public ResponseEntity<?> update(String id, FornecedorDto fornecedorDto) {
 
 
-            Fornecedor fornecedorSelecionado = fornecedorRepository.findById(id)
-                    .orElseThrow(()->new RecursoNaoEncontradoException("Fornecedor nao encontrado"));
+        Fornecedor fornecedorSelecionado = fornecedorRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor não encontrado"));
 
-            ResponseEntity<ErrorDetails> cnpfIsPresent = verificaCnpj(fornecedorDto);
-            if (cnpfIsPresent != null && !Objects.equals(fornecedorDto.getCnpj(), fornecedorSelecionado.getCnpj()))
-                return cnpfIsPresent;
+        Optional<Fornecedor> fornecedorVerificado =
+                fornecedorRepository.findByCnpjAndUsuarioId(fornecedorDto.getCnpj(), fornecedorDto.getIdUsuario());
 
-            fornecedorRepository.save(Fornecedor.builder()
-                    .id(fornecedorSelecionado.getId())
-                    .usuario(fornecedorSelecionado.getUsuario())
-                    .cnpj(fornecedorDto.getCnpj())
-                    .nome(fornecedorDto.getNome())
-                    .build());
+        if (fornecedorVerificado.isPresent() && !Objects.equals(fornecedorDto.getCnpj(), fornecedorSelecionado.getCnpj())) return new ResponseEntity<ErrorDetails>(ErrorDetails.builder()
+                .codigo(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .time(LocalDateTime.now())
+                .message("CNPJ ou CPF já cadastrado")
+                .build(),
+                HttpStatus.UNPROCESSABLE_ENTITY);
 
-            return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+        fornecedorRepository.save(Fornecedor.builder()
+                .id(fornecedorSelecionado.getId())
+                .usuario(fornecedorSelecionado.getUsuario())
+                .cnpj(fornecedorDto.getCnpj())
+                .nome(fornecedorDto.getNome())
+                .build());
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @Override
-    public List <FornecedorDto> get(String idUsuario) {
+    public List<FornecedorDto> get(String idUsuario) {
         return fornecedorRepository.findByUsuarioId(idUsuario)
                 .stream()
                 .map(FornecedorDto::to)
@@ -76,7 +91,7 @@ public class FornecedorUseCaseImpl implements FornecedorUseCase {
                 .stream()
                 .map(FornecedorDto::to)
                 .findFirst()
-                .orElseThrow(()->new RecursoNaoEncontradoException("Fornecedor não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor não encontrado"));
     }
 
     @Override
@@ -84,23 +99,15 @@ public class FornecedorUseCaseImpl implements FornecedorUseCase {
         return fornecedorRepository.findByCnpjAndUsuarioId(cnpj, idUsuario)
                 .stream()
                 .map(FornecedorDto::to).findFirst()
-                .orElseThrow(()->new RecursoNaoEncontradoException("Fornecedor não encontrado"));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor não encontrado"));
     }
 
     @Override
     public void delete(String id) {
-        if(fornecedorRepository.findById(id).isEmpty())throw new RecursoNaoEncontradoException("Fornecedor não encontrado");
+        if (fornecedorRepository.findById(id).isEmpty())
+            throw new RecursoNaoEncontradoException("Fornecedor não encontrado");
         fornecedorRepository.deleteById(id);
 
-    }
-
-    private ResponseEntity<ErrorDetails> verificaCnpj(FornecedorDto data) {
-        if (fornecedorRepository.findByCnpjAndUsuarioId(data.getCnpj(), data.getIdUsuario()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .body(new ErrorDetails("Cnpj já cadastrado", LocalDateTime.now(), HttpStatus.UNPROCESSABLE_ENTITY.value()));
-        }
-
-        return null;
     }
 
 }

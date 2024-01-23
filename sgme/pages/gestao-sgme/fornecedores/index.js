@@ -107,6 +107,7 @@ function Index(props) {
                     <div className="w-100 h-100 p-3">
                         <p className="fw-bold"> Informações</p>
                         <p>Nome: {selectedFornecedor.nome}</p>
+                        <p>Cnpj: {selectedFornecedor.cnpj}</p>
                     </div>
 
                 </ModalInfo>

@@ -1,6 +1,7 @@
 package com.br.sgme.service;
 
 import com.br.sgme.controller.fornecedor.dto.FornecedorDto;
+import com.br.sgme.exceptions.ErrorDetails;
 import com.br.sgme.exceptions.RecursoNaoEncontradoException;
 import com.br.sgme.model.Fornecedor;
 import com.br.sgme.model.usuario.Usuario;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,21 +58,25 @@ class FornecedorUseCaseImplTest {
 
 
     @Test
-    @DisplayName("Deve Verificar o CNPJ enviado ao salvar um Fornecedor")
-    void verificaCnpjAoSalvar() {
+    @DisplayName("Deve lancar erro ao tentar salvar com cpf ja existente")
+    void erroAoSalvarComCnpjDuplicado() {
 
-        FornecedorDto fornecedorDto = getFornecedor();
-        Optional<Usuario> usuario = Optional.of(getUsuario());
+        Usuario usuario = getUsuario();
+        FornecedorDto fornecedorDto = new FornecedorDto("1L", "1L", "03652445222211", "Empresa Xpto New");
+        Fornecedor fornecedorExistente = new Fornecedor("1L", usuario, "03652445222211", "Empresa Xpto New");
 
-        Mockito.when(fornecedorRepository.findByCnpjAndUsuarioId(Mockito.anyString(), Mockito.anyString()))
-                .thenReturn(Optional.of(new Fornecedor()));
+        Mockito.when(fornecedorRepository.findByCnpjAndUsuarioId(Mockito.eq("03652445222211"), Mockito.eq("1L")))
+                .thenReturn(Optional.of(fornecedorExistente));
 
-        Mockito.when(usuarioRepository.findById(Mockito.anyString())).thenReturn(usuario);
+        Mockito.when(usuarioRepository.findById(Mockito.anyString())).thenReturn(Optional.of(usuario));
 
-        ResponseEntity<?> error = fornecedorUseCase.save(fornecedorDto);
-        Mockito.verify(fornecedorRepository, Mockito.times(0)).save(Mockito.any(Fornecedor.class));
+        ResponseEntity<?> response = fornecedorUseCase.save(fornecedorDto);
 
-        assertEquals(HttpStatus.FOUND, error.getStatusCode());
+        Mockito.verify(fornecedorRepository,
+                Mockito.times(1)).findByCnpjAndUsuarioId("03652445222211", "1L");
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        assertEquals("CNPJ ou CPF já cadastrado", ((ErrorDetails) Objects.requireNonNull(response.getBody())).getMessage());
     }
 
 
@@ -101,25 +107,44 @@ class FornecedorUseCaseImplTest {
     }
 
     @Test
-    @DisplayName("Deve verificar o CNPJ enciado ao atualizar os dados de um Fornecedor")
-    void verificaCnpjAoAtualizar() {
+    @DisplayName("Deve lancar erro ao atualizar os dados de um Fornecedor e enviar um cnpj duplicado")
+    void erroAoAtualizarComCnpjDuplicado() {
 
         Usuario usuario = getUsuario();
         Fornecedor fornecedorRecuperado = new Fornecedor("1L", usuario, "09651556000199", "Empresa Xto Recuperada");
+
         Fornecedor fornecedorExistente = new Fornecedor("2L", usuario, "09651556000166", "Empresa Xto Existente");
-        FornecedorDto fornecedorDto = new FornecedorDto("1L", "1L", "09651556000166", "Empresa Xto Recuperada");
+
+        FornecedorDto fornecedorDto = new FornecedorDto("3L", "1L", "09651556000166", "Empresa Xto Recuperada");
 
         Mockito.when(fornecedorRepository.findById("1L")).thenReturn(Optional.of(fornecedorRecuperado));
-        Mockito.when(fornecedorRepository.findByCnpjAndUsuarioId("09651556000166", "1L"))
+
+        Mockito.when(fornecedorRepository.findByCnpjAndUsuarioId(Mockito.eq("09651556000166"), Mockito.eq("1L")))
                 .thenReturn(Optional.of(fornecedorExistente));
 
-        ResponseEntity<?> error = fornecedorUseCase.update("1L", fornecedorDto);
+        ResponseEntity<?> update =  fornecedorUseCase.update("1L", fornecedorDto);
 
-        Mockito.verify(fornecedorRepository, Mockito.times(0)).save(Mockito.any(Fornecedor.class));
+        Mockito.verify(fornecedorRepository, Mockito.times(1))
+                .findByCnpjAndUsuarioId("09651556000166", "1L");
 
-        assertEquals(HttpStatus.FOUND, error.getStatusCode());
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, update.getStatusCode());
+        assertEquals("CNPJ ou CPF já cadastrado", ((ErrorDetails) Objects.requireNonNull(update.getBody())).getMessage());
 
     }
+
+    @Test
+    @DisplayName("Deve lancar um erro ao  alterar um Fornecedor")
+    void erroAoAlterarFornecedor() {
+        FornecedorDto fornecedorDto = getFornecedor();
+
+        Mockito.when(fornecedorRepository.findById("1L")).thenReturn(Optional.empty());
+
+        RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class,
+                ()->fornecedorUseCase.update("1L", fornecedorDto)
+                );
+        assertEquals("Fornecedor não encontrado", exception.getMessage());
+    }
+
 
     @Test
     @DisplayName("Deve listar todos os fornecedores de um usuario")
@@ -167,7 +192,7 @@ class FornecedorUseCaseImplTest {
     void erroBuscarFornecedorIdUsuario() {
 
         Mockito.when(fornecedorRepository.findById(Mockito.anyString()))
-                .thenThrow(new RecursoNaoEncontradoException("Fornecedor não encontrado"));
+                .thenReturn(Optional.empty());
 
         RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class,
                 () -> {

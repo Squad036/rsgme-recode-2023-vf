@@ -68,6 +68,36 @@ class ReceitaUseCaseImplTest {
         assertEquals(HttpStatus.CREATED, save.getStatusCode());
 
     }
+    @Test
+    @DisplayName("Deve salvar um receita com sucesso com Observacao Vazia")
+    void salvarReceitaComObservacaoVazia() {
+        Usuario usuarioRecuperado = getUsuario();
+        Optional<Usuario> usuario = Optional.of(usuarioRecuperado);
+
+        ReceitaDto receitaDto = getReceitaDto();
+        receitaDto.setObservacao(null);
+        Cliente clienteRecuperado = getCliente();
+        Optional<Cliente> cliente = Optional.of(clienteRecuperado);
+
+        Receita receitaEntity = Receita.builder()
+                .usuario(usuarioRecuperado)
+                .cliente(clienteRecuperado)
+                .valor(receitaDto.getValor())
+                .dataVencimento(receitaDto.getDataVencimento())
+                .status(receitaDto.getStatus())
+                .pagamento(FormasPagamento.valueOf(receitaDto.getFormaPagamento()))
+                .observacao("")
+                .build();
+
+        Mockito.when(usuarioRepository.findById(Mockito.eq("1L"))).thenReturn(usuario);
+        Mockito.when(clienteRepository.findById(Mockito.eq("1L"))).thenReturn(cliente);
+
+        ResponseEntity<?> save = receitaUseCase.save(receitaDto);
+
+        Mockito.verify(receitaRepository, Mockito.times(1)).save(receitaEntity);
+        assertEquals(HttpStatus.CREATED, save.getStatusCode());
+
+    }
 
     @Test
     @DisplayName("Deve alterar uma despesa com sucesso")
@@ -111,13 +141,13 @@ class ReceitaUseCaseImplTest {
     @Test
     @DisplayName("Deve lançar um erro ao alterar uma despesa")
     void erroAoAlterarReceita() {
-        Mockito.when(receitaRepository.findById(Mockito.any()))
-                .thenThrow(new RecursoNaoEncontradoException("Receita não encontrada"));
 
-        RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class, () -> {
-            receitaUseCase.update("1L", Mockito.any());
+        Mockito.when(receitaRepository.findById(Mockito.eq("1L"))).thenReturn(Optional.empty());
 
-        });
+        ReceitaDto receitaDto = getReceitaDto();
+
+        RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class,
+                () -> receitaUseCase.update("1L", receitaDto));
 
         assertEquals("Receita não encontrada", exception.getMessage());
 
@@ -143,14 +173,9 @@ class ReceitaUseCaseImplTest {
         assertEquals("1L", result.get(0).getIdCliente());
         assertEquals("1L", result.get(0).getIdUsuario());
 
-
         assertEquals(3.0, result.get(1).getValor());
         assertEquals("1L", result.get(1).getIdCliente());
         assertEquals("1L", result.get(1).getIdUsuario());
-
-
-
-
     }
 
 
@@ -179,11 +204,10 @@ class ReceitaUseCaseImplTest {
     @DisplayName("Deve lancar um erro ao listar uma despesa buscando por ID")
     void erroAoListarReceitaPorID() {
 
-       Mockito.when(receitaRepository.findById(Mockito.any())).thenThrow(new RecursoNaoEncontradoException("Receita não encontrada"));
+       Mockito.when(receitaRepository.findById(Mockito.eq("1L"))).thenReturn(Optional.empty());
 
-       RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class, ()->{
-          receitaUseCase.getById(Mockito.any());
-       });
+       RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class,
+               ()-> receitaUseCase.getById("1L"));
 
        assertEquals("Receita não encontrada", exception.getMessage());
 
@@ -209,9 +233,8 @@ class ReceitaUseCaseImplTest {
     void erroAoExcluirReceita() {
 
         Mockito.when(receitaRepository.findById(Mockito.eq("1L"))).thenThrow(new RecursoNaoEncontradoException("Receita não encontrada"));
-        RecursoNaoEncontradoException  exception = assertThrows(RecursoNaoEncontradoException.class, ()->{
-            receitaUseCase.delete(Mockito.anyString());
-        });
+        RecursoNaoEncontradoException  exception = assertThrows(RecursoNaoEncontradoException.class,
+                ()-> receitaUseCase.delete(Mockito.anyString()));
 
         assertEquals("Receita não encontrada", exception.getMessage());
     }
@@ -238,7 +261,7 @@ class ReceitaUseCaseImplTest {
                 LocalDate.now(),
                 "Pendente",
                 "CARTAO",
-                ""
+                "Pedido 001"
         );
     }
 }

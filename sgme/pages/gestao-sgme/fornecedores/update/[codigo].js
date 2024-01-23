@@ -111,7 +111,7 @@ const UpdateFornecedor = () => {
                         <label htmlFor="valor">Cpnj / CPF: </label>
                         <input placeholder="Cnpj / Cpf"
                                className="form-control"
-                               name="codigo"
+                               name="cnpj"
                                value={fornecedor.cnpj}
                                onChange={handleInputChange}
                         />

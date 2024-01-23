@@ -47,7 +47,7 @@ class AuthorizationServiceTest {
         String username = "usuarioInexistente";
 
         Mockito.when(usuarioRepository.findByLogin(username))
-                .thenThrow(new LoginInvalidoException("Usuário inexistente ou senha inválida"));
+                .thenReturn(Optional.empty());
 
         LoginInvalidoException exception = assertThrows(LoginInvalidoException.class, ()->{
             authorizationService.loadUserByUsername(username);

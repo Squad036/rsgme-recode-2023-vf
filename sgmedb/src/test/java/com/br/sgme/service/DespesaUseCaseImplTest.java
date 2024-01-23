@@ -72,6 +72,45 @@ class DespesaUseCaseImplTest {
 
     }
 
+
+    @Test
+    @DisplayName("Deve salvar uma despesa com sucesso com observaçao vazia")
+    void salvarDespesaComObservacaoVazia() {
+        Usuario usuarioRecuperado = getUsuario();
+        Optional<Usuario> usuario = Optional.of(usuarioRecuperado);
+
+        DespesaDto despesaDto = getDespesaDto();
+        despesaDto.setObservacao(null);
+        Fornecedor fornecedorRecuperado = getFornecedor();
+        Optional<Fornecedor> fornecedor = Optional.of(fornecedorRecuperado);
+
+        Despesa despesaEntity = Despesa.builder()
+                .usuario(usuarioRecuperado)
+                .fornecedor(fornecedorRecuperado)
+                .valor(despesaDto.getValor())
+                .dataVencimento(despesaDto.getDataVencimento())
+                .status(despesaDto.getStatus())
+                .pagamento(FormasPagamento.valueOf(despesaDto.getFormaPagamento()))
+                .observacao("")
+                .build();
+
+        Mockito.when(usuarioRepository.findById(Mockito.eq("1L")))
+                .thenReturn(usuario);
+
+        Mockito.when(fornecedorRepository.findById(Mockito.eq("1L")))
+                .thenReturn(fornecedor);
+
+        ResponseEntity<?> save = despesaUseCase.save(despesaDto);
+
+
+        Mockito.verify(despesaRepository, Mockito.times(1)).save(despesaEntity);
+
+        assertEquals(HttpStatus.CREATED, save.getStatusCode());
+
+    }
+
+
+
     @Test
     @DisplayName("Deve alterar uma despesa com sucesso")
     void alterarDespesa() {
@@ -115,11 +154,13 @@ class DespesaUseCaseImplTest {
     @DisplayName("Deve lançar  erro alterar uma despesa")
     void erroAoAlterarDespesa() {
 
+        DespesaDto despesaDto = getDespesaDto();
+
         Mockito.when(despesaRepository.findById(Mockito.any()))
-                .thenThrow(new RecursoNaoEncontradoException("Despesa não encontrada"));
+                .thenReturn(Optional.empty());
 
        RecursoNaoEncontradoException exception = assertThrows(RecursoNaoEncontradoException.class, ()->{
-          despesaUseCase.update("1L", Mockito.any());
+          despesaUseCase.update("1L", despesaDto);
        });
 
        assertEquals("Despesa não encontrada", exception.getMessage());
@@ -234,7 +275,7 @@ class DespesaUseCaseImplTest {
                 LocalDate.now(),
                 "Pendente",
                 "CARTAO",
-                "");
+                "Pedido 001");
     }
 
 
