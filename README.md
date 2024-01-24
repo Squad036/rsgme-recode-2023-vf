@@ -26,7 +26,8 @@ $ Configure o arquivo application.properties alterando a senha e usuario para a 
 Execute apliação para disponilizar a api para consumo no projeto Front End
 
 ## Testes Unitários:
-Para executar os testes unitarios acesse a a pasta de teste e execute.
+Para executar os testes unitarios acesse a a pasta de teste e execute.<br>
+Para visualizar o relatorios dos testes unitarios acesse a Pagina Index dentro da pasta Target-site - index e abra no navegador!
 
 
 ## 🎲 Rodando o Front End (Desenvolvida em NEXTJS):
@@ -39,6 +40,9 @@ $ npm run dev
 
 ## 🛠 Tecnologias utilizadas:
 <li>Java com Spring Boot</li>
+<li>Spring Security</li>
+<li>J-Unit para Testes Unitarios</li>
+<li>Jacoco - Para visualização do Relatorios dos testes</li>
 <li>Next.Js</li>
 <li>BootStrap</li>
 <li>Html</li>
