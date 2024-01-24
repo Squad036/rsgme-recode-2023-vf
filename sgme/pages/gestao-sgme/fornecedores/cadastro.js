@@ -39,6 +39,9 @@ function Cadastro(props) {
             if (axios.isAxiosError(error) && error.response) {
                 setResultErro(true)
                 setErroApi(error.response.data.message)
+            }else{
+                setResultErro(true)
+                setErroApi("Servidor indisponivel no momento")
             }
         }
     }

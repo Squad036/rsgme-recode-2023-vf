@@ -39,9 +39,11 @@ function Index(props) {
                     setErroLogin(true)
                     setErroLoginMessage(error.response.data.message);
                 } else {
-                    console.error("Erro ao enviar dados para a API:", error);
+                    setErroLogin(true)
+                    setErroLoginMessage("Servidor indisponivel no momento")
                 }
             });
+
 
     }
 
